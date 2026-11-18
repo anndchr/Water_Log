@@ -1,6 +1,6 @@
-/* Water Log service worker: keeps the app working offline.
+/* УС УУ service worker: keeps the app working offline.
    When you change index.html, change the version number below so phones pick up the update. */
-var CACHE = 'waterlog-v2';
+var CACHE = 'waterlog-v4';
 var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', function (e) {

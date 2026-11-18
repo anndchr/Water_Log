@@ -21,7 +21,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
 <style>
 /* Layout: one narrow column. Main screen = drop total (tap for details) + amount picker + Add/Remove at thumb height.
-   Details and Settings open as full-screen panels (#details, #prefs). */
+   Details (day/week history, hourly graph, tips) and Settings open as full-screen panels (#pDetails, #pPrefs). */
 :root {
   --bg: #EEF4F5;
   --surface: #FFFFFF;
@@ -110,13 +110,16 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
 .iconbtn svg { width: 22px; height: 22px; stroke: var(--fg); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .hero {
-  display: grid; grid-template-columns: clamp(104px, 30vw, 136px) minmax(0, 1fr); gap: 18px; align-items: center;
-  width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 22px;
-  padding: 18px; cursor: pointer;
+  flex: 1 1 auto; min-height: 270px;
+  display: flex; flex-direction: column; justify-content: center; gap: 10px;
+  width: 100%; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 22px;
+  padding: 16px; cursor: pointer;
 }
 .hero:hover { border-color: var(--accent); }
+.hero .t { display: grid; justify-items: center; }
 .hero .t > * { display: block; }
-.glass { width: 100%; height: auto; display: block; }
+.gwrap { position: relative; flex: 1 1 0; min-height: 110px; max-height: 420px; width: 100%; }
+.glass { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
 .g-fill { fill: var(--glass-fill); }
 .g-line { stroke: var(--glass-line); stroke-width: 2.5; stroke-linejoin: round; }
 .water { fill: var(--water); }
@@ -127,23 +130,29 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
 @keyframes drift { to { transform: translateX(-120px); } }
 
 .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.big { font: 800 clamp(40px, 12vw, 54px)/1.05 var(--font-body); letter-spacing: -0.02em; margin-top: 2px; }
-.big .unit { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.big { font: 800 clamp(36px, 11vw, 50px)/1.05 var(--font-body); letter-spacing: -0.02em; margin-top: 2px; }
+.big .unit { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
 .sub { color: var(--muted); font-size: 14px; margin-top: 2px; }
-.pill { display: inline-block !important; margin-top: 10px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); font-weight: 700; font-size: 14px; }
+.pill { display: inline-block; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); font-weight: 700; font-size: 14px; }
 .pill.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.more { margin-top: 10px; font-size: 14px; font-weight: 700; color: var(--accent); }
+.row2 { display: flex !important; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 14px; margin-top: 10px; }
+.more { font-size: 14px; font-weight: 700; color: var(--accent); }
 
-.note { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px 0 16px; border-radius: 14px; font-weight: 600; }
+.note {
+  display: none; position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 4;
+  min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px 0 16px;
+  border-radius: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+.note.on, .note.err { display: flex; }
 .note.on { background: var(--fg); color: var(--bg); }
-.note.err { color: var(--danger); padding-left: 4px; }
+.note.err { background: var(--surface); color: var(--danger); border: 2px solid var(--danger); }
 .note button { min-height: 44px; padding: 0 16px; border: 0; background: transparent; color: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; }
 
-.controls { margin-top: auto; display: grid; gap: 12px; }
+.controls { position: relative; display: grid; gap: 10px; }
 .label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
-  display: grid; gap: 2px; justify-items: center; align-content: center; min-height: 72px; padding: 8px 2px;
+  flex: 1 0 56px; display: grid; gap: 2px; justify-items: center; align-content: center; min-height: 72px; padding: 8px 2px;
   background: var(--surface); border: 2px solid var(--line); border-radius: 16px; cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -172,19 +181,31 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
   padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.pwrap { max-width: 520px; margin: 0 auto; padding-block: 12px 40px; display: grid; gap: 26px; }
+.pwrap { max-width: 520px; margin: 0 auto; padding-block: 12px 40px; display: grid; gap: 22px; }
+.vstack { display: grid; gap: 22px; }
 .phead { display: flex; align-items: center; gap: 8px; min-height: 48px; }
 .phead h2 { font: 700 20px/1.2 var(--font-display); }
 .back { width: 48px; height: 48px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); cursor: pointer; display: grid; place-items: center; flex: none; }
 .back svg { width: 22px; height: 22px; stroke: var(--fg); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .sec h3 { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.seg button { min-height: 52px; padding: 0 8px; border: 0; background: transparent; font-weight: 700; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+.navr { display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; gap: 8px; align-items: center; }
+.navt { text-align: center; min-width: 0; }
+.navm { font-size: 18px; font-weight: 800; }
+.navs { font-size: 13px; color: var(--muted); min-height: 19px; }
+
 .dsum .d { color: var(--muted); font-size: 14px; }
 .dsum .s { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; margin-top: 2px; }
 .dsum .s small { font-size: 16px; font-weight: 600; color: var(--muted); }
 
 .log li { display: flex; align-items: center; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); }
 .log li:first-child { border-top: 1px solid var(--line); }
-.log .tm { color: var(--muted); min-width: 76px; }
+.log .tm { color: var(--muted); min-width: 84px; }
 .log .am { font-weight: 700; flex: 1; }
 .log .am.neg { color: var(--danger); }
 .log .rm { width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; }
@@ -196,11 +217,16 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
 .bar { fill: var(--bar); }
 .bar.met { fill: var(--bar-met); }
 .base { stroke: var(--line); stroke-width: 1; }
+.gridl { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.selmark { fill: var(--fg); }
 .goal-line { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.hit { cursor: pointer; }
+.axis { font: 600 11px var(--font-body); fill: var(--muted); }
 .c-val { font: 700 12px var(--font-body); fill: var(--muted); text-anchor: middle; }
 .c-val.met { fill: var(--fg); }
 .c-day { font: 600 12px var(--font-body); fill: var(--muted); text-anchor: middle; }
 .c-day.now { fill: var(--fg); font-weight: 800; }
+.hrread { font-weight: 700; margin-bottom: 8px; min-height: 24px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 13px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 12px; height: 12px; border-radius: 3px; background: var(--bar-met); }
@@ -208,23 +234,34 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
 .sw.dash { background: none; height: 0; width: 18px; border-top: 1.5px dashed var(--muted); border-radius: 0; }
 .stats3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
 .stats3 .k { font-size: 12px; color: var(--muted); }
-.stats3 .v { font-size: 18px; font-weight: 800; margin-top: 2px; line-height: 1.25; }
+.stats3 .v { font-size: 17px; font-weight: 800; margin-top: 2px; line-height: 1.25; }
 
+
+/* settings */
 .row { display: grid; gap: 10px; }
 .row + .row { padding-top: 22px; border-top: 1px solid var(--line); }
-.row .rl { font-weight: 700; }
-.row .hintline { color: var(--muted); font-size: 14px; }
+.row .rl { font-weight: 800; font-size: 17px; }
+.hintline { color: var(--muted); font-size: 14px; }
+.hintline.warn { color: var(--danger); }
+.hintline:empty { display: none; }
 .stepper { display: inline-flex; align-items: center; justify-self: start; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
 .stepper button { width: 56px; height: 56px; border: 0; background: transparent; font-size: 26px; font-weight: 700; cursor: pointer; }
 .stepper button:hover:not(:disabled) { background: var(--bg); }
 .stepper input { width: 100px; height: 56px; border: 0; border-inline: 1px solid var(--line); background: transparent; text-align: center; font-size: 20px; font-weight: 800; -moz-appearance: textfield; }
 .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
-.seg button { min-height: 52px; padding: 0 8px; border: 0; background: transparent; font-weight: 700; cursor: pointer; }
-.seg button + button { border-left: 1px solid var(--line); }
-.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .status { color: var(--muted); font-size: 14px; }
 .status.warn { color: var(--danger); }
+
+.plist { display: flex; flex-wrap: wrap; gap: 8px; }
+.pchip { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border: 2px solid var(--line); border-radius: 999px; background: var(--surface); font-weight: 700; cursor: pointer; }
+.pchip i { font-style: normal; color: var(--muted); font-size: 18px; line-height: 1; }
+.pchip:hover:not(:disabled) { border-color: var(--danger); }
+.addrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.addrow input { height: 52px; padding: 0 14px; border: 2px solid var(--line); border-radius: 14px; background: var(--surface); font-size: 18px; font-weight: 700; min-width: 0; }
+.btn2 { min-height: 52px; padding: 0 18px; border: 2px solid var(--line); border-radius: 14px; background: var(--surface); font-weight: 700; cursor: pointer; }
+.btn2:hover:not(:disabled) { border-color: var(--accent); }
+.btn2.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -245,7 +282,13 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
   </header>
 
   <button type="button" class="hero" id="hero">
-    <svg class="glass" id="glass" viewBox="0 0 136 262" aria-hidden="true">
+    <span class="t">
+      <span class="eyebrow" data-i18n="today"></span>
+      <span class="big"><span id="total">0</span><span class="unit" id="unit1"></span></span>
+      <span class="sub" id="sub"></span>
+      <span class="row2"><span class="pill" id="pill"></span><span class="more" id="moreLink"></span></span>
+    </span>
+    <span class="gwrap"><svg class="glass" id="glass" viewBox="0 0 136 262" aria-hidden="true">
       <defs>
         <clipPath id="gclip"><path d="M8 10 L128 10 L116 236 Q115 248 103 248 L33 248 Q21 248 20 236 Z"/></clipPath>
       </defs>
@@ -257,19 +300,11 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
         </g>
       </g>
       <path class="g-line" fill="none" d="M8 10 L128 10 L116 236 Q115 248 103 248 L33 248 Q21 248 20 236 Z"/>
-    </svg>
-    <span class="t">
-      <span class="eyebrow" data-i18n="today"></span>
-      <span class="big"><span id="total">0</span><span class="unit" id="unit1"></span></span>
-      <span class="sub" id="sub"></span>
-      <span class="pill" id="pill"></span>
-      <span class="more" id="moreLink"></span>
-    </span>
+    </svg></span>
   </button>
 
-  <div class="note" id="note" role="status"><span id="noteText"></span><button type="button" id="undo" hidden></button></div>
-
   <section class="controls" aria-labelledby="lblAmount">
+    <div class="note" id="note" role="status"><span id="noteText"></span><button type="button" id="undo" hidden></button></div>
     <p class="label" id="lblAmount" data-i18n="chooseAmount"></p>
     <div class="chips" id="chips"></div>
     <div class="custom" id="customRow" hidden>
@@ -294,16 +329,35 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
       <button type="button" class="back" data-back data-i18n-aria="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg></button>
       <h2 id="tDetails" data-i18n="details"></h2>
     </header>
-    <div class="dsum">
-      <p class="d" id="dDate"></p>
-      <p class="s" id="dSum"></p>
+
+    <div class="seg" role="group" aria-labelledby="tDetails">
+      <button type="button" data-vm="day" data-i18n="dayTab"></button>
+      <button type="button" data-vm="week" data-i18n="weekTab"></button>
     </div>
-    <section class="sec">
-      <h3 data-i18n="drinks"></h3>
-      <ul class="log" id="log"></ul>
-    </section>
-    <section class="sec">
-      <h3 data-i18n="week"></h3>
+
+    <div class="navr">
+      <button type="button" class="back" id="navPrev" data-i18n-aria="prev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg></button>
+      <div class="navt"><p class="navm" id="navMain"></p><p class="navs" id="navSub"></p></div>
+      <button type="button" class="back" id="navNext" data-i18n-aria="next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+
+    <div class="vstack" id="dayView">
+      <div class="dsum"><p class="s" id="dSum"></p></div>
+      <section class="sec">
+        <h3 data-i18n="hourly"></h3>
+        <div class="weekbox">
+          <p class="hrread" id="hrRead"></p>
+          <svg class="chart" id="hrChart" viewBox="0 0 360 170" role="img"></svg>
+        </div>
+      </section>
+      <section class="sec">
+        <h3 data-i18n="drinks"></h3>
+        <ul class="log" id="log"></ul>
+      </section>
+    </div>
+
+    <div class="vstack" id="weekView" hidden>
+      <div class="dsum"><p class="d" id="wLbl"></p><p class="s" id="wSum"></p></div>
       <div class="weekbox">
         <svg class="chart" id="chart" viewBox="0 0 360 192" role="img"></svg>
         <div class="legend">
@@ -313,11 +367,12 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
         </div>
         <div class="stats3">
           <div><p class="k" id="kMet"></p><p class="v" id="sMet"></p></div>
-          <div><p class="k" id="kAvg"></p><p class="v" id="sAvg"></p></div>
-          <div><p class="k" id="kStreak"></p><p class="v" id="sStreak"></p></div>
+          <div><p class="k" id="kTotal"></p><p class="v" id="sTotal"></p></div>
+          <div><p class="k" id="kBest"></p><p class="v" id="sBest"></p></div>
         </div>
       </div>
-    </section>
+    </div>
+
   </div>
 </section>
 
@@ -339,7 +394,20 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     </div>
 
     <div class="row">
-      <p class="rl" id="lblLang" data-i18n="langLabel"></p>
+      <p class="rl" data-i18n="presetsLabel"></p>
+      <p class="hintline" id="presetsHint"></p>
+      <div class="plist" id="plist"></div>
+      <div class="addrow">
+        <label class="sr" for="presetNew" data-i18n="presetAmount"></label>
+        <input id="presetNew" type="number" inputmode="numeric" min="10" max="2000" step="10" data-i18n-ph="presetAmount" data-live>
+        <button type="button" class="btn2 pri" id="presetAdd" data-i18n="addPreset" data-live></button>
+      </div>
+      <p class="hintline warn" id="presetMsg" role="status"></p>
+      <div class="btns"><button type="button" class="btn2" id="presetReset" data-i18n="resetPresets" data-live></button></div>
+    </div>
+
+    <div class="row">
+      <p class="rl" data-i18n="langLabel" id="lblLang"></p>
       <div class="seg" role="group" aria-labelledby="lblLang">
         <button type="button" data-lang="en" data-live>English</button>
         <button type="button" data-lang="mn" data-live>Монгол</button>
@@ -348,18 +416,9 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     </div>
 
     <div class="row">
-      <p class="rl" id="lblTime" data-i18n="timeLabel"></p>
-      <div class="seg" role="group" aria-labelledby="lblTime">
-        <button type="button" data-tf="auto" data-i18n="tAuto" data-live></button>
-        <button type="button" data-tf="12h" data-i18n="t12" data-live></button>
-        <button type="button" data-tf="24h" data-i18n="t24" data-live></button>
-      </div>
-      <p class="hintline" id="timeExample"></p>
-    </div>
-
-    <div class="row">
       <p class="rl" data-i18n="storageLabel"></p>
       <p class="status" id="status" role="status"></p>
+      <p class="hintline" id="keepNote"></p>
     </div>
   </div>
 </section>
@@ -369,61 +428,88 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return document.querySelectorAll(s); };
   var LOC = { en: 'en-US', mn: 'mn-MN', ja: 'ja-JP' };
-  var SIZES = [{ k: 'sip', ml: 100 }, { k: 'glass', ml: 250 }, { k: 'mug', ml: 350 }, { k: 'bottle', ml: 500 }];
+  var DEFAULT_PRESETS = [100, 250, 350, 500];
+  var MAX_PRESETS = 8, KEEP_DAYS = 21;
+  /* 12-hour or 24-hour follows what this device's browser reports. */
+  var DEV12 = (function () {
+    try {
+      var o = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions();
+      if (o.hourCycle) return o.hourCycle === 'h11' || o.hourCycle === 'h12';
+      return !!o.hour12;
+    } catch (e) { return false; }
+  })();
 
   var STR = {
     en: {
-      unit: 'ml', today: 'Today', details: 'Details', detailsAria: 'Show details', settings: 'Settings', back: 'Back',
+      unit: 'ml', today: 'Today', yesterday: 'Yesterday', details: 'History', detailsAria: 'Show history', settings: 'Settings', back: 'Back',
       toGo: '{n} ml to go', reached: 'Goal reached', over: 'Goal reached · {n} ml over', goalLine: 'Goal: {n} ml',
-      chooseAmount: 'Choose an amount', sip: 'Sip', glass: 'Glass', mug: 'Mug', bottle: 'Bottle', other: 'Other',
+      chooseAmount: 'Choose an amount', other: 'Other',
       add: 'Add', remove: 'Remove', amountLabel: 'Amount in ml', lower: 'Lower by 50 ml', raise: 'Raise by 50 ml',
       badAmount: 'Enter an amount between 10 and 2,000 ml.', cantRemove: "You can't remove more than today's total.",
       added: '{n} ml added', removed: '{n} ml removed', undo: 'Undo',
-      drinks: "Today's drinks", none: 'Nothing logged yet today.', delEntry: 'Delete this entry',
-      week: 'Last 7 days', chartAria: 'Daily water intake for the last 7 days', todayShort: 'Today',
+      dayTab: 'Day', weekTab: 'Week', prev: 'Previous', next: 'Next',
+      hourly: 'By hour', hourAria: 'Water intake by hour of the day', peak: 'Peak', noDrinks: 'No drinks logged',
+      drinks: 'Drinks', none: 'Nothing logged this day.', delEntry: 'Delete this entry',
+      chartAria: 'Daily water intake for the 7 days', thisWeek: 'This week', lastWeek: 'Last week', weeksAgo: '{n} weeks ago',
       legendMet: 'Goal reached', legendBelow: 'Below goal', legendGoal: 'Goal {n} ml',
-      sMet: 'Days goal reached', sMetVal: '{n} of 7', sAvg: 'Average', sAvgVal: '{n} ml/day', sStreak: 'Streak', dayOne: '{n} day', dayMany: '{n} days',
+      sMet: 'Goal reached', sMetVal: '{n} of 7 days', sTotal: 'Total', sBest: 'Best day', avgLbl: 'Daily average',
       goalLabel: 'Daily goal', lowerGoal: 'Lower goal by 100 ml', raiseGoal: 'Raise goal by 100 ml', goalUnit: 'Millilitres per day',
-      langLabel: 'Language', timeLabel: 'Time format', tAuto: 'Auto', t12: '12-hour', t24: '24-hour', example: 'Example: {t}',
-      storageLabel: 'Storage', statusLoading: 'Loading your log…', statusSaving: 'Saving…',
+      presetsLabel: 'Amount presets', presetsHint: 'Quick amounts on the main screen. {n} of 8 used.', presetAmount: 'New amount in ml', addPreset: 'Add',
+      resetPresets: 'Reset to default', removePreset: 'Remove {n} ml', presetBad: 'Enter an amount between 10 and 2,000 ml.',
+      presetDup: 'That amount is already in the list.', presetMax: 'You can have up to 8 presets.',
+      langLabel: 'Language', 
+      storageLabel: 'Storage', keepNote: 'The last 3 weeks are kept. Older days are deleted automatically.',
+      statusLoading: 'Loading your log…', statusSaving: 'Saving…',
       statusSavedDb: 'Saved to your account', statusSavedLocal: 'Saved on this device only',
       statusErr: "Couldn't save. Check your connection and try again.",
       statusUnreach: "Can't reach your saved log yet. It will load when the connection returns.",
       statusStale: 'Your log may be out of date. Reconnecting…', statusUnavail: 'Your saved log is unavailable right now.'
     },
     mn: {
-      unit: 'мл', today: 'Өнөөдөр', details: 'Дэлгэрэнгүй', detailsAria: 'Дэлгэрэнгүйг харах', settings: 'Тохиргоо', back: 'Буцах',
+      unit: 'мл', today: 'Өнөөдөр', yesterday: 'Өчигдөр', details: 'Түүх', detailsAria: 'Түүхийг харах', settings: 'Тохиргоо', back: 'Буцах',
       toGo: '{n} мл үлдсэн', reached: 'Зорилгод хүрсэн', over: 'Зорилгод хүрсэн · {n} мл илүү', goalLine: 'Зорилго: {n} мл',
-      chooseAmount: 'Хэмжээгээ сонгоно уу', sip: 'Балгам', glass: 'Стакан', mug: 'Аяга', bottle: 'Лонх', other: 'Бусад',
+      chooseAmount: 'Хэмжээгээ сонгоно уу', other: 'Бусад',
       add: 'Нэмэх', remove: 'Хасах', amountLabel: 'Хэмжээ (мл)', lower: 'Багасгах (−50 мл)', raise: 'Нэмэх (+50 мл)',
       badAmount: '10–2,000 мл хоорондох хэмжээ оруулна уу.', cantRemove: 'Өнөөдрийн нийт хэмжээнээс илүү хасах боломжгүй.',
       added: '{n} мл нэмлээ', removed: '{n} мл хаслаа', undo: 'Буцаах',
-      drinks: 'Өнөөдрийн бүртгэл', none: 'Өнөөдөр бүртгэл алга.', delEntry: 'Энэ бүртгэлийг устгах',
-      week: 'Сүүлийн 7 хоног', chartAria: 'Сүүлийн 7 хоногийн уусан усны хэмжээ', todayShort: 'Өнөөдөр',
+      dayTab: 'Өдөр', weekTab: 'Долоо хоног', prev: 'Өмнөх', next: 'Дараах',
+      hourly: 'Цагаар', hourAria: 'Цаг тутамд уусан усны хэмжээ', peak: 'Хамгийн их', noDrinks: 'Бүртгэл алга',
+      drinks: 'Бүртгэл', none: 'Энэ өдөр бүртгэл алга.', delEntry: 'Энэ бүртгэлийг устгах',
+      chartAria: '7 хоногийн уусан усны хэмжээ', thisWeek: 'Энэ долоо хоног', lastWeek: 'Өнгөрсөн долоо хоног', weeksAgo: '{n} долоо хоногийн өмнө',
       legendMet: 'Зорилгод хүрсэн', legendBelow: 'Зорилгоос бага', legendGoal: 'Зорилго {n} мл',
-      sMet: 'Зорилгод хүрсэн өдөр', sMetVal: '7-оос {n}', sAvg: 'Дундаж', sAvgVal: '{n} мл/өдөр', sStreak: 'Дараалсан өдөр', dayOne: '{n} өдөр', dayMany: '{n} өдөр',
+      sMet: 'Зорилгод хүрсэн', sMetVal: '7-оос {n} өдөр', sTotal: 'Нийт', sBest: 'Хамгийн их өдөр', avgLbl: 'Өдрийн дундаж',
       goalLabel: 'Өдрийн зорилго', lowerGoal: 'Зорилго багасгах (−100 мл)', raiseGoal: 'Зорилго нэмэх (+100 мл)', goalUnit: 'Өдөрт хэдэн миллилитр',
-      langLabel: 'Хэл', timeLabel: 'Цагийн формат', tAuto: 'Автомат', t12: '12 цаг', t24: '24 цаг', example: 'Жишээ: {t}',
-      storageLabel: 'Хадгалалт', statusLoading: 'Ачаалж байна…', statusSaving: 'Хадгалж байна…',
+      presetsLabel: 'Хэмжээний сонголтууд', presetsHint: 'Үндсэн дэлгэц дээрх хурдан сонголтууд. {n}/8 ашигласан.', presetAmount: 'Шинэ хэмжээ (мл)', addPreset: 'Нэмэх',
+      resetPresets: 'Анхны утга руу буцаах', removePreset: '{n} мл-ийг хасах', presetBad: '10–2,000 мл хоорондох хэмжээ оруулна уу.',
+      presetDup: 'Энэ хэмжээ жагсаалтад байна.', presetMax: 'Хамгийн ихдээ 8 сонголттой байж болно.',
+      langLabel: 'Хэл', 
+      storageLabel: 'Хадгалалт', keepNote: 'Сүүлийн 3 долоо хоногийн бүртгэлийг хадгална. Түүнээс хуучин өдрүүд автоматаар устна.',
+      statusLoading: 'Ачаалж байна…', statusSaving: 'Хадгалж байна…',
       statusSavedDb: 'Бүртгэлдээ хадгалсан', statusSavedLocal: 'Зөвхөн энэ төхөөрөмжид хадгалсан',
       statusErr: 'Хадгалж чадсангүй. Холболтоо шалгаад дахин оролдоно уу.',
       statusUnreach: 'Хадгалсан бүртгэлд холбогдож чадсангүй. Холболт сэргэхэд ачаална.',
       statusStale: 'Бүртгэл хуучирсан байж магадгүй. Дахин холбогдож байна…', statusUnavail: 'Хадгалсан бүртгэл одоогоор боломжгүй байна.'
     },
     ja: {
-      unit: 'ml', today: '今日', details: '詳細', detailsAria: '詳細を表示', settings: '設定', back: '戻る',
+      unit: 'ml', today: '今日', yesterday: '昨日', details: '履歴', detailsAria: '履歴を表示', settings: '設定', back: '戻る',
       toGo: 'あと {n} ml', reached: '目標達成', over: '目標達成・{n} ml 超過', goalLine: '目標: {n} ml',
-      chooseAmount: '量を選ぶ', sip: 'ひと口', glass: 'コップ', mug: 'マグ', bottle: 'ボトル', other: 'その他',
+      chooseAmount: '量を選ぶ', other: 'その他',
       add: '追加', remove: '減らす', amountLabel: '量 (ml)', lower: '50 ml 減らす', raise: '50 ml 増やす',
       badAmount: '10〜2,000 ml の量を入力してください。', cantRemove: '今日の合計より多くは減らせません。',
       added: '{n} ml 追加しました', removed: '{n} ml 減らしました', undo: '元に戻す',
-      drinks: '今日の記録', none: '今日はまだ記録がありません。', delEntry: 'この記録を削除',
-      week: '過去7日間', chartAria: '過去7日間の飲水量', todayShort: '今日',
+      dayTab: '日', weekTab: '週', prev: '前へ', next: '次へ',
+      hourly: '時間帯別', hourAria: '時間帯別の飲水量', peak: 'ピーク', noDrinks: '記録なし',
+      drinks: '記録', none: 'この日の記録はありません。', delEntry: 'この記録を削除',
+      chartAria: '7日間の飲水量', thisWeek: '今週', lastWeek: '先週', weeksAgo: '{n}週間前',
       legendMet: '目標達成', legendBelow: '目標未満', legendGoal: '目標 {n} ml',
-      sMet: '目標達成日', sMetVal: '7日中{n}日', sAvg: '平均', sAvgVal: '{n} ml/日', sStreak: '連続日数', dayOne: '{n}日', dayMany: '{n}日',
+      sMet: '目標達成', sMetVal: '7日中{n}日', sTotal: '合計', sBest: '最多の日', avgLbl: '1日平均',
       goalLabel: '1日の目標', lowerGoal: '目標を100 ml 減らす', raiseGoal: '目標を100 ml 増やす', goalUnit: '1日あたりのミリリットル',
-      langLabel: '言語', timeLabel: '時刻の表示', tAuto: '自動', t12: '12時間', t24: '24時間', example: '例: {t}',
-      storageLabel: '保存先', statusLoading: '読み込み中…', statusSaving: '保存中…',
+      presetsLabel: '量のプリセット', presetsHint: 'メイン画面のクイック選択です。{n}/8 件使用中。', presetAmount: '新しい量 (ml)', addPreset: '追加',
+      resetPresets: '初期値に戻す', removePreset: '{n} ml を削除', presetBad: '10〜2,000 ml の量を入力してください。',
+      presetDup: 'その量はすでにあります。', presetMax: 'プリセットは最大8件までです。',
+      langLabel: '言語', 
+      storageLabel: '保存先', keepNote: '直近3週間分を保存します。それより古い日は自動で削除されます。',
+      statusLoading: '読み込み中…', statusSaving: '保存中…',
       statusSavedDb: 'アカウントに保存済み', statusSavedLocal: 'この端末にのみ保存',
       statusErr: '保存できませんでした。接続を確認して、もう一度お試しください。',
       statusUnreach: '保存済みの記録に接続できません。接続が戻ると読み込まれます。',
@@ -438,16 +524,19 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     return 'en';
   }
 
-  var state = { goal: 2000, lang: detectLang(), timeFormat: 'auto', days: {}, loaded: false, sel: 250, custom: false };
+  var state = {
+    goal: 2000, lang: detectLang(), presets: DEFAULT_PRESETS.slice(),
+    days: {}, loaded: false, sel: 250, custom: false
+  };
+  var view = { mode: 'day', offset: 0, hour: null };
+
   try {
     var savedSel = JSON.parse(localStorage.getItem('water-log-sel'));
     if (savedSel && savedSel.ml >= 10 && savedSel.ml <= 2000) { state.sel = savedSel.ml; state.custom = !!savedSel.custom; }
   } catch (e) {}
   function saveSel() { try { localStorage.setItem('water-log-sel', JSON.stringify({ ml: state.sel, custom: state.custom })); } catch (e) {} }
 
-  var backend = null;
-  var mode = 'pending';
-  var renderedKey = '';
+  var backend = null, mode = 'pending', renderedKey = '';
   var statusKey = 'statusLoading', statusKind = '';
 
   function t(key, v) {
@@ -462,13 +551,22 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
   var keyOf = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
   var addDays = function (key, n) { var p = key.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2] + n, 12); };
   var todayKey = function () { return keyOf(new Date()); };
+  var dayKeyAt = function (off) { return keyOf(addDays(todayKey(), -off)); };
 
-  function fmtTime(ts) {
-    var o = { hour: 'numeric', minute: '2-digit' };
-    if (state.timeFormat === '12h') o.hourCycle = 'h12';
-    else if (state.timeFormat === '24h') { o.hourCycle = 'h23'; o.hour = '2-digit'; }
-    try { return new Date(ts).toLocaleTimeString(LOC[state.lang], o); } catch (e) { return new Date(ts).toLocaleTimeString(); }
+  function fmtClock(h, m) {
+    if (DEV12) {
+      var h12 = h % 12 || 12;
+      if (state.lang === 'ja') return (h < 12 ? '午前' : '午後') + h12 + ':' + pad(m);
+      return h12 + ':' + pad(m) + ' ' + (h < 12 ? 'AM' : 'PM');
+    }
+    return pad(h) + ':' + pad(m);
   }
+  function fmtTime(ts) { var d = new Date(ts); return fmtClock(d.getHours(), d.getMinutes()); }
+  function hourLabel(h) {
+    if (DEV12) return (h % 12 || 12) + (h < 12 ? 'AM' : 'PM');
+    return pad(h);
+  }
+  function hourRange(h) { return fmtClock(h, 0) + ' – ' + fmtClock((h + 1) % 24, 0); }
   function fmtDate(d, opts) {
     try { return d.toLocaleDateString(LOC[state.lang], opts); } catch (e) { return d.toLocaleDateString(undefined, opts); }
   }
@@ -477,6 +575,37 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     var d = state.days[key];
     var s = d ? d.entries.reduce(function (a, e) { return a + e.ml; }, 0) : 0;
     return Math.max(0, s);
+  }
+  function hourly(key) {
+    var a = []; for (var i = 0; i < 24; i++) a.push(0);
+    var d = state.days[key];
+    if (d) d.entries.forEach(function (e) { a[new Date(e.t).getHours()] += e.ml; });
+    return a.map(function (v) { return Math.max(0, v); });
+  }
+
+  /* ---------- settings helpers ---------- */
+  function normPresets(arr) {
+    var out = [];
+    arr.forEach(function (v) { v = Math.round(Number(v)); if (v >= 10 && v <= 2000 && out.indexOf(v) < 0) out.push(v); });
+    out.sort(function (a, b) { return a - b; });
+    return out.slice(0, MAX_PRESETS);
+  }
+  function mergeSettings(data) {
+    if (!data) return;
+    if (typeof data.goal === 'number' && data.goal >= 500 && data.goal <= 6000) state.goal = data.goal;
+    if (LOC[data.lang]) state.lang = data.lang;
+    if (Array.isArray(data.presets)) state.presets = normPresets(data.presets);
+    ensureSel();
+  }
+  function settingsObj() {
+    return { goal: state.goal, lang: state.lang, presets: state.presets.slice() };
+  }
+  function ensureSel() {
+    if (state.custom || !state.presets.length) { if (!state.presets.length) state.custom = true; return; }
+    if (state.presets.indexOf(state.sel) < 0) {
+      state.sel = state.presets.reduce(function (best, v) { return Math.abs(v - state.sel) < Math.abs(best - state.sel) ? v : best; }, state.presets[0]);
+      saveSel();
+    }
   }
 
   /* ---------- status ---------- */
@@ -493,16 +622,14 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     var K = 'water-log-v1';
     try {
       var d = JSON.parse(localStorage.getItem(K)) || {};
-      state.goal = d.goal || 2000;
       state.days = d.days || {};
-      if (LOC[d.lang]) state.lang = d.lang;
-      if (d.timeFormat === '12h' || d.timeFormat === '24h' || d.timeFormat === 'auto') state.timeFormat = d.timeFormat;
+      mergeSettings(d);
     } catch (e) {}
     var persist = function () {
-      try { localStorage.setItem(K, JSON.stringify({ goal: state.goal, lang: state.lang, timeFormat: state.timeFormat, days: state.days })); } catch (e) {}
+      try { localStorage.setItem(K, JSON.stringify({ goal: state.goal, lang: state.lang, presets: state.presets, days: state.days })); } catch (e) {}
       return Promise.resolve();
     };
-    return { saveDay: persist, saveSettings: persist };
+    return { saveDay: persist, saveSettings: persist, deleteDay: persist };
   }
 
   var inflight = 0, latest = null, loadTimer = null;
@@ -517,13 +644,11 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
   function applySnapshot(snap) {
     latest = snap;
     if (inflight > 0) return;
-    var days = {}, goal = state.goal, lang = state.lang, tf = state.timeFormat;
+    var days = {};
     snap.docs.forEach(function (d) {
       var data = d.data() || {};
       if (d.id === 'settings') {
-        if (typeof data.goal === 'number') goal = data.goal;
-        if (LOC[data.lang]) lang = data.lang;
-        if (data.timeFormat === '12h' || data.timeFormat === '24h' || data.timeFormat === 'auto') tf = data.timeFormat;
+        mergeSettings(data);
       } else if (d.id.indexOf('d-') === 0) {
         var list = Array.isArray(data.entries) ? data.entries : [];
         var entries = list.filter(function (x) { return x && typeof x.ml === 'number' && x.ml !== 0; })
@@ -531,10 +656,11 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
         if (entries.length) days[d.id.slice(2)] = { entries: entries };
       }
     });
-    state.days = days; state.goal = goal; state.lang = lang; state.timeFormat = tf;
+    state.days = days;
     state.loaded = true;
     if (!snap.metadata.fromCache) { clearTimeout(loadTimer); setStatus(savedKey()); }
     applyLang();
+    pruneOld();
     render();
   }
 
@@ -562,11 +688,8 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
           return ref.set({ date: key, entries: entries, total: entries.reduce(function (a, e) { return a + e.ml; }, 0) });
         }));
       },
-      saveSettings: function () {
-        return track(queue('settings', function () {
-          return col.doc('settings').set({ goal: state.goal, lang: state.lang, timeFormat: state.timeFormat });
-        }));
-      }
+      deleteDay: function (key) { return track(queue('d-' + key, function () { return col.doc('d-' + key).delete(); })); },
+      saveSettings: function () { return track(queue('settings', function () { return col.doc('settings').set(settingsObj()); })); }
     };
   }
 
@@ -585,26 +708,41 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     }, 400);
   }
 
+  /* keep only the last KEEP_DAYS days (today + 20 before) */
+  var pruning = {};
+  function pruneOld() {
+    if (!state.loaded || !backend) return;
+    var cutoff = keyOf(addDays(todayKey(), -(KEEP_DAYS - 1)));
+    Object.keys(state.days).forEach(function (k) {
+      if (k < cutoff) {
+        delete state.days[k];
+        if (!pruning[k]) {
+          pruning[k] = true;
+          Promise.resolve(backend.deleteDay(k)).catch(function () { delete pruning[k]; });
+        }
+      }
+    });
+  }
+
   /* ---------- note (undo / errors) ---------- */
-  var noteTimer = null, noteId = null;
+  var noteTimer = null, noteId = null, noteKey = null;
   function clearNote() {
     clearTimeout(noteTimer); noteId = null;
-    var n = $('#note');
-    n.className = 'note';
+    $('#note').className = 'note';
     $('#noteText').textContent = '';
     $('#undo').hidden = true;
   }
   function showNote(text, id, isErr) {
     clearTimeout(noteTimer);
-    var n = $('#note');
-    n.className = 'note ' + (isErr ? 'err' : 'on');
+    $('#note').className = 'note ' + (isErr ? 'err' : 'on');
     $('#noteText').textContent = text;
     noteId = isErr ? null : id;
+    noteKey = todayKey();
     $('#undo').hidden = isErr;
     noteTimer = setTimeout(clearNote, isErr ? 4000 : 5000);
   }
 
-  /* ---------- actions ---------- */
+  /* ---------- logging ---------- */
   function validSel() { return state.sel >= 10 && state.sel <= 2000; }
 
   function logAmount(sign) {
@@ -621,14 +759,13 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
   }
 
-  function removeEntry(id) {
-    var k = todayKey();
-    var day = state.days[k];
+  function removeEntry(key, id) {
+    var day = state.days[key];
     if (!day) return;
     day.entries = day.entries.filter(function (e) { return e.id !== id; });
-    if (!day.entries.length) delete state.days[k];
+    if (!day.entries.length) delete state.days[key];
     render();
-    persistDay(k);
+    persistDay(key);
   }
 
   function setGoal(v) {
@@ -639,51 +776,73 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     persistSettingsSoon();
   }
 
+  /* ---------- presets ---------- */
+  function presetMsg(key) { $('#presetMsg').textContent = key ? t(key) : ''; }
+  function addPreset(v) {
+    v = Math.round(v);
+    if (!(v >= 10 && v <= 2000)) { presetMsg('presetBad'); return false; }
+    if (state.presets.indexOf(v) >= 0) { presetMsg('presetDup'); return false; }
+    if (state.presets.length >= MAX_PRESETS) { presetMsg('presetMax'); return false; }
+    presetMsg('');
+    state.presets = normPresets(state.presets.concat([v]));
+    ensureSel(); render(); persistSettingsSoon();
+    return true;
+  }
+  function removePreset(v) {
+    state.presets = state.presets.filter(function (x) { return x !== v; });
+    presetMsg('');
+    ensureSel(); render(); persistSettingsSoon();
+  }
+
   /* ---------- language ---------- */
   function applyLang() {
     document.documentElement.lang = state.lang;
     $$('[data-i18n]').forEach(function (el) { el.textContent = t(el.getAttribute('data-i18n')); });
     $$('[data-i18n-aria]').forEach(function (el) { el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))); });
+    $$('[data-i18n-ph]').forEach(function (el) { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
     $('#undo').textContent = t('undo');
     $('#chart').setAttribute('aria-label', t('chartAria'));
+    $('#hrChart').setAttribute('aria-label', t('hourAria'));
+    $('#keepNote').textContent = t('keepNote');
     setStatus(statusKey, statusKind);
   }
 
-  /* ---------- render ---------- */
-  function buildChips() {
-    var box = $('#chips');
-    box.textContent = '';
-    SIZES.forEach(function (s) {
-      var b = document.createElement('button');
-      b.type = 'button'; b.className = 'chip';
-      b.setAttribute('data-k', s.k); b.setAttribute('data-ml', s.ml);
-      b.innerHTML = '<span class="n"></span><span class="v"></span>';
-      b.addEventListener('click', function () { state.sel = s.ml; state.custom = false; saveSel(); render(); });
-      box.appendChild(b);
-    });
-    var o = document.createElement('button');
-    o.type = 'button'; o.className = 'chip'; o.setAttribute('data-k', 'other');
-    o.innerHTML = '<span class="n"></span><span class="v">…</span>';
-    o.addEventListener('click', function () {
-      state.custom = true;
-      if (!validSel()) state.sel = 250;
-      saveSel(); render();
-      var ci = $('#custom'); ci.focus(); try { ci.select(); } catch (e) {}
-    });
-    box.appendChild(o);
-  }
-
+  /* ---------- render: main ---------- */
+  var chipsSig = '';
   function renderControls() {
+    var sig = state.presets.join(',');
+    var box = $('#chips');
+    if (sig !== chipsSig) {
+      chipsSig = sig;
+      box.textContent = '';
+      state.presets.forEach(function (ml) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'chip'; b.setAttribute('data-ml', ml);
+        b.innerHTML = '<span class="v"></span><span class="n"></span>';
+        b.querySelector('.v').textContent = ml;
+        b.addEventListener('click', function () { state.sel = ml; state.custom = false; saveSel(); render(); });
+        box.appendChild(b);
+      });
+      var o = document.createElement('button');
+      o.type = 'button'; o.className = 'chip'; o.setAttribute('data-k', 'other');
+      o.innerHTML = '<span class="v">…</span><span class="n"></span>';
+      o.addEventListener('click', function () {
+        state.custom = true;
+        if (!validSel()) state.sel = 250;
+        saveSel(); render();
+        var ci = $('#custom'); ci.focus(); try { ci.select(); } catch (e) {}
+      });
+      box.appendChild(o);
+    }
     $$('#chips .chip').forEach(function (c) {
-      var k = c.getAttribute('data-k');
-      c.querySelector('.n').textContent = t(k);
-      var pressed = k === 'other' ? state.custom : (!state.custom && Number(c.getAttribute('data-ml')) === state.sel);
-      if (k !== 'other') c.querySelector('.v').textContent = c.getAttribute('data-ml');
+      var isOther = c.getAttribute('data-k') === 'other';
+      c.querySelector('.n').textContent = isOther ? t('other') : t('unit');
+      var pressed = isOther ? state.custom : (!state.custom && Number(c.getAttribute('data-ml')) === state.sel);
       c.setAttribute('aria-pressed', pressed ? 'true' : 'false');
     });
     $('#customRow').hidden = !state.custom;
-    var ci = $('#custom');
-    if (document.activeElement !== ci) ci.value = state.sel;
+    var ci2 = $('#custom');
+    if (document.activeElement !== ci2) ci2.value = state.sel;
     var amt = validSel() ? fmt(state.sel) + ' ' + t('unit') : '–';
     $('#addA').textContent = '+ ' + t('add');
     $('#addM').textContent = amt;
@@ -710,13 +869,74 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     $('#level').style.transform = 'translateY(' + (pct === 0 ? 262 : 248 - 238 * pct) + 'px)';
   }
 
-  function renderDetails(total, goal) {
-    $('#dDate').textContent = fmtDate(new Date(), { weekday: 'long', month: 'long', day: 'numeric' });
+  /* ---------- render: details ---------- */
+  function niceMax(v) {
+    if (v <= 0) return 250;
+    var steps = [100, 200, 250, 300, 400, 500, 600, 800, 1000, 1500, 2000];
+    for (var i = 0; i < steps.length; i++) if (v <= steps[i]) return steps[i];
+    return Math.ceil(v / 500) * 500;
+  }
+  function maxOffset() { return view.mode === 'day' ? KEEP_DAYS - 1 : 2; }
+
+  function renderNav() {
+    var main, sub = '';
+    if (view.mode === 'day') {
+      var d = addDays(todayKey(), -view.offset);
+      var full = fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' });
+      if (view.offset === 0) { main = t('today'); sub = full; }
+      else if (view.offset === 1) { main = t('yesterday'); sub = full; }
+      else main = full;
+    } else {
+      var s = addDays(todayKey(), -(view.offset * 7 + 6)), e = addDays(todayKey(), -(view.offset * 7));
+      var o = { month: 'short', day: 'numeric' };
+      main = fmtDate(s, o) + ' – ' + fmtDate(e, o);
+      sub = view.offset === 0 ? t('thisWeek') : view.offset === 1 ? t('lastWeek') : t('weeksAgo', { n: view.offset });
+    }
+    $('#navMain').textContent = main;
+    $('#navSub').textContent = sub;
+    $('#navPrev').disabled = view.offset >= maxOffset();
+    $('#navNext').disabled = view.offset <= 0;
+    $$('[data-vm]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-vm') === view.mode ? 'true' : 'false'); });
+    $('#dayView').hidden = view.mode !== 'day';
+    $('#weekView').hidden = view.mode !== 'week';
+  }
+
+  function renderDay() {
+    var key = dayKeyAt(view.offset), total = totalOf(key), goal = state.goal;
     $('#dSum').innerHTML = fmt(total) + ' / ' + fmt(goal) + ' <small>' + t('unit') + ' · ' + Math.round(total / goal * 100) + '%</small>';
+
+    var hrs = hourly(key), mx = Math.max.apply(null, hrs), nice = niceMax(mx);
+    var x0 = 38, pw = 322, base = 140, top = 14, H = base - top, slot = pw / 24, bw = Math.min(10, slot - 4);
+    var s = '';
+    [0, 0.5, 1].forEach(function (f) {
+      var y = base - H * f;
+      s += '<line class="' + (f === 0 ? 'base' : 'gridl') + '" x1="' + x0 + '" x2="360" y1="' + y + '" y2="' + y + '"/>';
+      if (f > 0) s += '<text class="axis" x="' + (x0 - 6) + '" y="' + (y + 4) + '" text-anchor="end">' + fmt(nice * f) + '</text>';
+    });
+    hrs.forEach(function (v, h) {
+      if (v <= 0) return;
+      var hh = Math.max(3, v / nice * H), x = x0 + h * slot + (slot - bw) / 2;
+      var cls = 'bar' + ((view.hour === null || view.hour === h) ? ' met' : '');
+      s += '<rect class="' + cls + '" x="' + x + '" y="' + (base - hh) + '" width="' + bw + '" height="' + hh + '" rx="3"/>';
+    });
+    if (view.hour !== null) s += '<rect class="selmark" x="' + (x0 + view.hour * slot + 1) + '" y="' + (base + 3) + '" width="' + (slot - 2) + '" height="3" rx="1.5"/>';
+    [0, 6, 12, 18].forEach(function (h) {
+      s += '<text class="axis" x="' + (x0 + h * slot + slot / 2) + '" y="162" text-anchor="middle">' + hourLabel(h) + '</text>';
+    });
+    for (var h2 = 0; h2 < 24; h2++) {
+      s += '<rect class="hit" data-h="' + h2 + '" x="' + (x0 + h2 * slot) + '" y="0" width="' + slot + '" height="' + (base + 8) + '" fill="#000" fill-opacity="0"/>';
+    }
+    $('#hrChart').innerHTML = s;
+
+    var rd;
+    if (view.hour !== null) rd = hourRange(view.hour) + ' · ' + fmt(hrs[view.hour]) + ' ' + t('unit');
+    else if (mx > 0) rd = t('peak') + ': ' + hourRange(hrs.indexOf(mx)) + ' · ' + fmt(mx) + ' ' + t('unit');
+    else rd = t('noDrinks');
+    $('#hrRead').textContent = rd;
 
     var ul = $('#log');
     ul.textContent = '';
-    var day = state.days[todayKey()];
+    var day = state.days[key];
     if (!day || !day.entries.length) {
       var p = document.createElement('li');
       p.className = 'empty'; p.style.display = 'block';
@@ -732,15 +952,16 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
         b.type = 'button'; b.className = 'rm'; b.setAttribute('data-live', '');
         b.setAttribute('aria-label', t('delEntry')); b.textContent = '×';
         b.disabled = !state.loaded;
-        b.addEventListener('click', function () { removeEntry(e.id); });
+        b.addEventListener('click', function () { removeEntry(key, e.id); });
         li.appendChild(tm); li.appendChild(am); li.appendChild(b);
         ul.appendChild(li);
       });
     }
+  }
 
-    var tk = todayKey();
-    var keys = [];
-    for (var i = 6; i >= 0; i--) keys.push(keyOf(addDays(tk, -i)));
+  function renderWeek() {
+    var goal = state.goal, keys = [], offs = [];
+    for (var i = 6; i >= 0; i--) { var off = view.offset * 7 + i; offs.push(off); keys.push(dayKeyAt(off)); }
     var totals = keys.map(totalOf);
     var max = Math.max.apply(null, [goal].concat(totals)) * 1.12;
     var W = 360, base = 150, top = 26, H = base - top, slot = W / 7, bw = 30;
@@ -753,37 +974,56 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
       var x = i * slot + (slot - bw) / 2, cx = i * slot + slot / 2;
       if (h > 0) s += '<rect class="bar' + (met ? ' met' : '') + '" x="' + x + '" y="' + (base - h) + '" width="' + bw + '" height="' + h + '" rx="5"/>';
       s += '<text class="c-val' + (met ? ' met' : '') + '" x="' + cx + '" y="' + (base - h - 6) + '">' + (tot > 0 ? fmt(tot) : '–') + '</text>';
-      var d = addDays(k, 0), isNow = i === 6;
-      s += '<text class="c-day' + (isNow ? ' now' : '') + '" x="' + cx + '" y="170">' + (isNow ? t('todayShort') : fmtDate(d, { weekday: 'short' })) + '</text>';
-      s += '<text class="c-day" x="' + cx + '" y="185">' + d.getDate() + '</text>';
+      var d = addDays(k, 0), isNow = offs[i] === 0;
+      s += '<text class="c-day' + (isNow ? ' now' : '') + '" x="' + cx + '" y="170">' + fmtDate(d, { weekday: 'short' }) + '</text>';
+      s += '<text class="c-day' + (isNow ? ' now' : '') + '" x="' + cx + '" y="185">' + d.getDate() + '</text>';
+      s += '<rect class="hit" data-off="' + offs[i] + '" x="' + (i * slot) + '" y="0" width="' + slot + '" height="192" fill="#000" fill-opacity="0"/>';
     });
     $('#chart').innerHTML = s;
     $('#lgMet').textContent = t('legendMet');
     $('#lgBelow').textContent = t('legendBelow');
     $('#lgGoal').textContent = t('legendGoal', { n: fmt(goal) });
 
-    var metCount = totals.filter(function (v) { return v >= goal; }).length;
     var logged = totals.filter(function (v) { return v > 0; });
-    var avg = logged.length ? logged.reduce(function (a, b) { return a + b; }, 0) / logged.length : 0;
-    var k2 = tk;
-    if (totalOf(k2) < goal) k2 = keyOf(addDays(k2, -1));
-    var streak = 0;
-    while (totalOf(k2) >= goal && streak < 400) { streak++; k2 = keyOf(addDays(k2, -1)); }
+    var sum = totals.reduce(function (a, b) { return a + b; }, 0);
+    var avg = logged.length ? sum / logged.length : 0;
+    var best = Math.max.apply(null, totals);
+    $('#wLbl').textContent = t('avgLbl');
+    $('#wSum').innerHTML = (avg ? fmt(avg) : '–') + ' <small>' + t('unit') + '</small>';
     $('#kMet').textContent = t('sMet');
-    $('#kAvg').textContent = t('sAvg');
-    $('#kStreak').textContent = t('sStreak');
-    $('#sMet').textContent = t('sMetVal', { n: metCount });
-    $('#sAvg').textContent = avg ? t('sAvgVal', { n: fmt(avg) }) : '–';
-    $('#sStreak').textContent = t(streak === 1 ? 'dayOne' : 'dayMany', { n: streak });
+    $('#kTotal').textContent = t('sTotal');
+    $('#kBest').textContent = t('sBest');
+    $('#sMet').textContent = t('sMetVal', { n: totals.filter(function (v) { return v >= goal; }).length });
+    $('#sTotal').textContent = fmt(sum) + ' ' + t('unit');
+    $('#sBest').textContent = best > 0 ? fmt(best) + ' ' + t('unit') : '–';
   }
 
+  function renderDetails() {
+    if (view.offset > maxOffset()) view.offset = maxOffset();
+    renderNav();
+    if (view.mode === 'day') renderDay(); else renderWeek();
+  }
+
+  /* ---------- render: settings ---------- */
   function renderPrefs() {
     var gi = $('#goal');
     if (document.activeElement !== gi) gi.value = state.goal;
     $('#goalUnit').textContent = t('goalUnit');
     $$('[data-lang]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-lang') === state.lang ? 'true' : 'false'); });
-    $$('[data-tf]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-tf') === state.timeFormat ? 'true' : 'false'); });
-    $('#timeExample').textContent = t('example', { t: fmtTime(Date.now()) });
+
+    $('#presetsHint').textContent = t('presetsHint', { n: state.presets.length });
+    var pl = $('#plist');
+    pl.textContent = '';
+    state.presets.forEach(function (v) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'pchip'; b.setAttribute('data-live', '');
+      b.setAttribute('aria-label', t('removePreset', { n: fmt(v) }));
+      b.innerHTML = '<span></span><i aria-hidden="true">×</i>';
+      b.firstChild.textContent = fmt(v) + ' ' + t('unit');
+      b.addEventListener('click', function () { removePreset(v); });
+      pl.appendChild(b);
+    });
+
   }
 
   function render() {
@@ -791,7 +1031,7 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     var total = totalOf(renderedKey), goal = state.goal;
     renderHero(total, goal);
     renderControls();
-    renderDetails(total, goal);
+    renderDetails();
     renderPrefs();
     $$('[data-live]').forEach(function (el) { el.disabled = !state.loaded; });
   }
@@ -804,6 +1044,7 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
     Object.keys(panels).forEach(function (k) { panels[k].hidden = (k !== name); });
     document.body.style.overflow = name ? 'hidden' : '';
     if (name) {
+      if (name === 'details') { view = { mode: 'day', offset: 0, hour: null }; renderDetails(); }
       panels[name].scrollTop = 0;
       var b = panels[name].querySelector('.back');
       if (b) b.focus({ preventScroll: true });
@@ -835,7 +1076,7 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
 
   $('#add').addEventListener('click', function () { logAmount(1); });
   $('#rem').addEventListener('click', function () { logAmount(-1); });
-  $('#undo').addEventListener('click', function () { var id = noteId; clearNote(); if (id) removeEntry(id); });
+  $('#undo').addEventListener('click', function () { var id = noteId, k = noteKey; clearNote(); if (id) removeEntry(k, id); });
 
   $('#custom').addEventListener('input', function (e) {
     var v = Math.round(Number(e.target.value));
@@ -851,28 +1092,54 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
   $('#cDown').addEventListener('click', function () { stepCustom(-50); });
   $('#cUp').addEventListener('click', function () { stepCustom(50); });
 
+  $$('[data-vm]').forEach(function (b) {
+    b.addEventListener('click', function () { view.mode = b.getAttribute('data-vm'); view.offset = 0; view.hour = null; renderDetails(); });
+  });
+  $('#navPrev').addEventListener('click', function () { if (view.offset < maxOffset()) { view.offset++; view.hour = null; renderDetails(); } });
+  $('#navNext').addEventListener('click', function () { if (view.offset > 0) { view.offset--; view.hour = null; renderDetails(); } });
+  $('#hrChart').addEventListener('click', function (e) {
+    var h = e.target.getAttribute && e.target.getAttribute('data-h');
+    if (h == null) return;
+    h = Number(h);
+    view.hour = view.hour === h ? null : h;
+    renderDetails();
+  });
+  $('#chart').addEventListener('click', function (e) {
+    var o = e.target.getAttribute && e.target.getAttribute('data-off');
+    if (o == null) return;
+    view = { mode: 'day', offset: Number(o), hour: null };
+    renderDetails();
+  });
+
   $('#goal').addEventListener('change', function (e) { setGoal(Number(e.target.value)); });
   $('#gDown').addEventListener('click', function () { setGoal(state.goal - 100); });
   $('#gUp').addEventListener('click', function () { setGoal(state.goal + 100); });
+
+  $('#presetAdd').addEventListener('click', function () {
+    var inp = $('#presetNew');
+    if (inp.value === '') { presetMsg('presetBad'); return; }
+    if (addPreset(Number(inp.value))) inp.value = '';
+  });
+  $('#presetNew').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('#presetAdd').click(); } });
+  $('#presetReset').addEventListener('click', function () {
+    state.presets = DEFAULT_PRESETS.slice(); presetMsg('');
+    ensureSel(); render(); persistSettingsSoon();
+  });
+
   $$('[data-lang]').forEach(function (b) {
     b.addEventListener('click', function () {
       state.lang = b.getAttribute('data-lang');
       applyLang(); render(); persistSettingsSoon();
     });
   });
-  $$('[data-tf]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      state.timeFormat = b.getAttribute('data-tf');
-      render(); persistSettingsSoon();
-    });
-  });
 
-  function checkRollover() { if (todayKey() !== renderedKey) render(); }
-  setInterval(checkRollover, 30000);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) checkRollover(); });
+  function tick() {
+    if (todayKey() !== renderedKey) { pruneOld(); render(); }
+  }
+  setInterval(tick, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
 
   /* ---------- start ---------- */
-  buildChips();
   applyLang();
   render();
   var h0 = location.hash.slice(1);
@@ -885,7 +1152,7 @@ h1 svg { width: 22px; height: 26px; fill: var(--accent); }
       backend = localBackend();
       state.loaded = true;
       setStatus(savedKey());
-      applyLang(); render();
+      applyLang(); pruneOld(); render();
       return;
     }
     mode = 'db';
